@@ -1,3 +1,4 @@
+import os
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
@@ -34,15 +35,22 @@ transforms_ = [
                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                ]
 
-image_path = '/content/IMG_5342.JPG'
-image = Image.open(image_path).convert('RGB')
-
-image = transforms.Compose(transforms_)(image)
+data_root = '/content/drive/MyDrive/ST/'
+dataloader = dataloader = DataLoader(ImageDataset(data_root, transforms_, 'test'), batch_size=batchsize, shuffle=False, num_workers=8)
 
 if not os.path.exists('/content/results/A'):
     os.makedirs('/content/results/A')
+if not os.path.exists('/content/results/B'):
+    os.makedirs('/content/results/B')
 
-real = torch.tensor(input_A.copy_(image), dtype=torch.float).to(device)
-fake_A = 0.5 * (net_GBtoA(real).data + 1.0)
+for i, batch in enumerate(dataloader):
+    real_A = torch.tensor(input_A.copy_(batch['A']), dtype=torch.float).to(device)
+    real_B = torch.tensor(input_B.copy_(batch['B']), dtype=torch.float).to(device)
 
-save_image(fake_A, '/content/results/A/IMG_5342.png')
+    fake_B = 0.5 * (net_GAtoB(real_A).data + 1.0)
+    fake_A = 0.5 * (net_GBtoA(real_B).data + 1.0)
+
+    save_image(fake_A, '/content/results/A/%04d.png' % (i + 1))
+    save_image(fake_B, '/content/results/B/%04d.png' % (i + 1))
+
+    print(i)
