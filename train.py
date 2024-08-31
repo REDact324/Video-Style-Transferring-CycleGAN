@@ -58,11 +58,11 @@ log_path = './log/'
 writer = tensorboardX.SummaryWriter(log_path)
 
 transforms_ = [
-              transforms.Resize(int(size * 1.12), Image.BICUBIC),
-              transforms.RandomCrop(size),
-              transforms.RandomHorizontalFlip(),
-              transforms.ToTensor(),
-              transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+    transforms.Resize(int(size * 1.12), Image.BICUBIC),
+    transforms.RandomCrop(size),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
               ]
 
 dataloader = DataLoader(ImageDataset(data_root, transforms_), batch_size=batchsize, shuffle=True, num_workers=8)
@@ -70,104 +70,104 @@ step = 0
 
 for epoch in range(epoch, n_epochs):
   for i, batch in enumerate(dataloader):
-      real_A1 = torch.tensor(input_A.copy_(batch['A'][0]), dtype=torch.float).to(device)
-      real_A2 = torch.tensor(input_A.copy_(batch['A'][1]), dtype=torch.float).to(device)
-      real_B = torch.tensor(input_B.copy_(batch['B']), dtype=torch.float).to(device)
+    real_A1 = torch.tensor(input_A.copy_(batch['A'][0]), dtype=torch.float).to(device)
+    real_A2 = torch.tensor(input_A.copy_(batch['A'][1]), dtype=torch.float).to(device)
+    real_B = torch.tensor(input_B.copy_(batch['B']), dtype=torch.float).to(device)
 
-      opt_G.zero_grad()
+    opt_G.zero_grad()
 
-      same_B = net_GAtoB(real_B)
-      loss_identity_B = criterion_identity(same_B, real_B) * 5.0
+    same_B = net_GAtoB(real_B)
+    loss_identity_B = criterion_identity(same_B, real_B) * 5.0
 
-      same_A1 = net_GBtoA(real_A1)
-      same_A2 = net_GBtoA(real_A2)
-      loss_identity_A1 = criterion_identity(same_A1, real_A1)
-      loss_identity_A2 = criterion_identity(same_A2, real_A2)
-      loss_identity_A = (loss_identity_A1 + loss_identity_A2) * 2.5
+    same_A1 = net_GBtoA(real_A1)
+    same_A2 = net_GBtoA(real_A2)
+    loss_identity_A1 = criterion_identity(same_A1, real_A1)
+    loss_identity_A2 = criterion_identity(same_A2, real_A2)
+    loss_identity_A = (loss_identity_A1 + loss_identity_A2) * 2.5
 
-      fake_B1 = net_GAtoB(real_A1)
-      fake_B2 = net_GAtoB(real_A2)
-      pred_fake1 = net_DA(fake_B1)
-      pred_fake2 = net_DA(fake_B2)
-      loss_GAN_A2B1 = criterion_GAN(pred_fake1, label_real)
-      loss_GAN_A2B2 = criterion_GAN(pred_fake2, label_real)
-      loss_GAN_A2B = (loss_GAN_A2B1 + loss_GAN_A2B2) * 0.5
+    fake_B1 = net_GAtoB(real_A1)
+    fake_B2 = net_GAtoB(real_A2)
+    pred_fake1 = net_DA(fake_B1)
+    pred_fake2 = net_DA(fake_B2)
+    loss_GAN_A2B1 = criterion_GAN(pred_fake1, label_real)
+    loss_GAN_A2B2 = criterion_GAN(pred_fake2, label_real)
+    loss_GAN_A2B = (loss_GAN_A2B1 + loss_GAN_A2B2) * 0.5
 
-      fake_A = net_GBtoA(real_B)
-      pred_fake = net_DB(fake_A)
-      loss_GAN_B2A = criterion_GAN(pred_fake, label_real)
+    fake_A = net_GBtoA(real_B)
+    pred_fake = net_DB(fake_A)
+    loss_GAN_B2A = criterion_GAN(pred_fake, label_real)
 
-      # cycle loss
-      recovered_A1 = net_GBtoA(fake_B1)
-      recovered_A2 = net_GBtoA(fake_B2)
-      loss_cycle_ABA1 = criterion_cycle(recovered_A1, real_A1)
-      loss_cycle_ABA2 = criterion_cycle(recovered_A2, real_A2)
-      loss_cycle_ABA = (loss_cycle_ABA1 + loss_cycle_ABA2) * 5.0
+    # cycle loss
+    recovered_A1 = net_GBtoA(fake_B1)
+    recovered_A2 = net_GBtoA(fake_B2)
+    loss_cycle_ABA1 = criterion_cycle(recovered_A1, real_A1)
+    loss_cycle_ABA2 = criterion_cycle(recovered_A2, real_A2)
+    loss_cycle_ABA = (loss_cycle_ABA1 + loss_cycle_ABA2) * 5.0
 
-      recovered_B = net_GAtoB(fake_A)
-      loss_cycle_BAB = criterion_cycle(recovered_B, real_B) * 10.0
+    recovered_B = net_GAtoB(fake_A)
+    loss_cycle_BAB = criterion_cycle(recovered_B, real_B) * 10.0
 
-      # Temporal loss
-      diff_real = real_A1 - real_A2
-      diff_fake = fake_B1 - fake_B2
-      loss_temporal = criterion_tamporal(diff_real, diff_fake) * 1e-3
+    # Temporal loss
+    diff_real = real_A1 - real_A2
+    diff_fake = fake_B1 - fake_B2
+    loss_temporal = criterion_tamporal(diff_real, diff_fake) * 1e-3
 
-      # total loss
-      loss_G = loss_identity_A + loss_identity_B + loss_GAN_A2B + loss_GAN_B2A + loss_cycle_ABA + loss_cycle_BAB + loss_temporal
-      loss_G.backward()
-      opt_G.step()
+    # total loss
+    loss_G = loss_identity_A + loss_identity_B + loss_GAN_A2B + loss_GAN_B2A + loss_cycle_ABA + loss_cycle_BAB + loss_temporal
+    loss_G.backward()
+    opt_G.step()
 
-      #####################
+    #####################
 
-      # DA
-      opt_DA.zero_grad()
+    # DA
+    opt_DA.zero_grad()
 
-      pred_real1 = net_DA(real_A1)
-      pred_real2 = net_DA(real_A2)
-      loss_D_real1 = criterion_GAN(pred_real1, label_real)
-      loss_D_real2 = criterion_GAN(pred_real2, label_real)
-      loss_D_real = (loss_D_real1 + loss_D_real2) * 0.5
+    pred_real1 = net_DA(real_A1)
+    pred_real2 = net_DA(real_A2)
+    loss_D_real1 = criterion_GAN(pred_real1, label_real)
+    loss_D_real2 = criterion_GAN(pred_real2, label_real)
+    loss_D_real = (loss_D_real1 + loss_D_real2) * 0.5
 
-      fake_A = fake_A_buffer.push_and_pop(fake_A)
-      pred_fake = net_DA(fake_A.detach())
-      loss_D_fake = criterion_GAN(pred_fake, label_fake)
+    fake_A = fake_A_buffer.push_and_pop(fake_A)
+    pred_fake = net_DA(fake_A.detach())
+    loss_D_fake = criterion_GAN(pred_fake, label_fake)
 
-      loss_DA = (loss_D_real + loss_D_fake) * 0.5
-      loss_DA.backward()
-      opt_DA.step()
+    loss_DA = (loss_D_real + loss_D_fake) * 0.5
+    loss_DA.backward()
+    opt_DA.step()
 
-      # DB
-      opt_DB.zero_grad()
+    # DB
+    opt_DB.zero_grad()
 
-      pred_real = net_DB(real_B)
-      loss_D_real = criterion_GAN(pred_real, label_real)
+    pred_real = net_DB(real_B)
+    loss_D_real = criterion_GAN(pred_real, label_real)
 
-      fake_B1 = fake_B_buffer.push_and_pop(fake_B1)
-      fake_B2 = fake_B_buffer.push_and_pop(fake_B2)
+    fake_B1 = fake_B_buffer.push_and_pop(fake_B1)
+    fake_B2 = fake_B_buffer.push_and_pop(fake_B2)
 
-      pred_fake1 = net_DB(fake_B1.detach())
-      pred_fake2 = net_DB(fake_B2.detach())
-      loss_D_fake1 = criterion_GAN(pred_fake1, label_fake)
-      loss_D_fake2 = criterion_GAN(pred_fake2, label_fake)
-      loss_D_fake = (loss_D_fake1 + loss_D_fake2) * 0.5
+    pred_fake1 = net_DB(fake_B1.detach())
+    pred_fake2 = net_DB(fake_B2.detach())
+    loss_D_fake1 = criterion_GAN(pred_fake1, label_fake)
+    loss_D_fake2 = criterion_GAN(pred_fake2, label_fake)
+    loss_D_fake = (loss_D_fake1 + loss_D_fake2) * 0.5
 
-      loss_DB = (loss_D_real + loss_D_fake) * 0.5
-      loss_DB.backward()
-      opt_DB.step()
+    loss_DB = (loss_D_real + loss_D_fake) * 0.5
+    loss_DB.backward()
+    opt_DB.step()
 
 
-      print("epoch:{}, batch:{}, loss_G:{}, loss_DA:{}, loss_DB:{}".format(
-          epoch, i, loss_G, loss_DA, loss_DB))
+    print("epoch:{}, batch:{}, loss_G:{}, loss_DA:{}, loss_DB:{}".format(
+        epoch, i, loss_G, loss_DA, loss_DB))
 
-      writer.add_scalar('loss_G', loss_G, global_step=step+1)
-      writer.add_scalar('loss_identity', loss_identity_A+loss_identity_B, global_step=step+1)
-      writer.add_scalar('loss_GAN', loss_GAN_A2B+loss_GAN_B2A, global_step=step+1)
-      writer.add_scalar('loss_cycle', loss_cycle_ABA+loss_cycle_BAB, global_step=step+1)
-      writer.add_scalar('loss_temporal', loss_temporal, global_step=step+1)
-      writer.add_scalar('loss_DA', loss_DA, global_step=step+1)
-      writer.add_scalar('loss_DB', loss_DB, global_step=step+1)
+    writer.add_scalar('loss_G', loss_G, global_step=step+1)
+    writer.add_scalar('loss_identity', loss_identity_A+loss_identity_B, global_step=step+1)
+    writer.add_scalar('loss_GAN', loss_GAN_A2B+loss_GAN_B2A, global_step=step+1)
+    writer.add_scalar('loss_cycle', loss_cycle_ABA+loss_cycle_BAB, global_step=step+1)
+    writer.add_scalar('loss_temporal', loss_temporal, global_step=step+1)
+    writer.add_scalar('loss_DA', loss_DA, global_step=step+1)
+    writer.add_scalar('loss_DB', loss_DB, global_step=step+1)
 
-      step += 1
+    step += 1
 
   lr_scheduler_G.step()
   lr_scheduler_DA.step()
