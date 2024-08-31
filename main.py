@@ -1,25 +1,28 @@
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-from torchvision.utils import save_image
+import argparse
+import os
+import cv2
 from PIL import Image
 import torch
-import itertools
-import tensorboardX
 
-from src.model import Discriminatror, Generator
-from src.util.buffer import ReplayBuffer
-from src.util.util import LambdaLR, weights_init_normal
-from src.dataset import ImageDataset
+from src.model import Generator
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def get_args_parser():
+  parser = argparse.ArgumentParser(add_help=False)
+  parser.add_argument('--video_path', help='directory of output text file')
+  parser.add_argument('--output_path', help='input_ads the IP address or a directory of text file')
+
+  return parser
 
 net_GAtoB = Generator().to(device)
 net_GBtoA = Generator().to(device)
 
 size = 256
 
-net_GAtoB.load_state_dict(torch.load('/content/models/net_GAtoB.pth'))
-net_GBtoA.load_state_dict(torch.load('/content/models/net_GBtoA.pth'))
+net_GAtoB.load_state_dict(torch.load('./models/net_GAtoB.pth'))
+net_GBtoA.load_state_dict(torch.load('./models/net_GBtoA.pth'))
 
 net_GAtoB.eval()
 net_GBtoA.eval()
@@ -34,15 +37,56 @@ transforms_ = [
                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
                ]
 
-image_path = '/content/IMG_5342.JPG'
-image = Image.open(image_path).convert('RGB')
+video_path = '/content/IMG_5342.JPG'
 
-image = transforms.Compose(transforms_)(image)
+def extract_frames(video_path, output_path):
+  video_capture = cv2.VideoCapture(video_path)
 
-if not os.path.exists('/content/results/A'):
-    os.makedirs('/content/results/A')
+  if not video_capture.isOpened():
+    print(f"Error opening video file {video_path}")
+    return
 
-real = torch.tensor(input_A.copy_(image), dtype=torch.float).to(device)
-fake_A = 0.5 * (net_GBtoA(real).data + 1.0)
+  # Get the total number of frames in the video
+  total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+  print(f"Total frames in video: {total_frames}")
 
-save_image(fake_A, '/content/results/A/IMG_5342.png')
+  fps = video_capture.get(cv2.CAP_PROP_FPS)
+  frame_width = int(video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+  frame_height = int(video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+  frame_size = (frame_width, frame_height)
+
+  # Create the output folder if it doesn't exist
+  if not os.path.exists(output_path):
+      os.makedirs(output_path)
+
+  # Define the codec and create VideoWriter object
+  fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+  out = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
+
+  while True:
+    # Read a frame from the video
+    ret, frame = video_capture.read()
+
+    if not ret:
+      break  # End of video
+
+    frame = frame.convert('RGB')
+    frame = transforms.Compose(transforms_)(frame)
+
+    real = torch.tensor(input_A.copy_(frame), dtype=torch.float).to(device)
+    fake_frame = 0.5 * (net_GBtoA(real).data + 1.0)
+
+    out.write(fake_frame)
+
+  video_capture.release()
+  out.release()
+  print(f"Processed video saved to {output_path}")
+
+if __name__ == '__main__':
+  parser = argparse.ArgumentParser('Convert video to anime style.', parents=[get_args_parser()])
+  args = parser.parse_args()
+
+  video_path = args.video_path
+  output_path = args.output_path
+
+  extract_frames(video_path, output_path)

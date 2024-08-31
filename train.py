@@ -5,7 +5,7 @@ import torch
 import itertools
 import tensorboardX
 
-from src.model import Discriminatror, Generator
+from src.model import Discriminator, Generator
 from src.util.buffer import ReplayBuffer
 from src.util.util import LambdaLR, weights_init_normal
 from src.dataset import ImageDataset
@@ -24,6 +24,11 @@ net_GBtoA = Generator().to(device)
 net_DA = Discriminator().to(device)
 net_DB = Discriminator().to(device)
 
+net_GAtoB.apply(weights_init_normal)
+net_GBtoA.apply(weights_init_normal)
+net_DA.apply(weights_init_normal)
+net_DB.apply(weights_init_normal)
+
 # Loss
 criterion_GAN = torch.nn.MSELoss()
 criterion_cycle = torch.nn.L1Loss()
@@ -39,7 +44,7 @@ lr_scheduler_G = torch.optim.lr_scheduler.LambdaLR(opt_G, lr_lambda=LambdaLR(n_e
 lr_scheduler_DA = torch.optim.lr_scheduler.LambdaLR(opt_DA, lr_lambda=LambdaLR(n_epochs, epoch, decay_epoch).step)
 lr_scheduler_DB = torch.optim.lr_scheduler.LambdaLR(opt_DB, lr_lambda=LambdaLR(n_epochs, epoch, decay_epoch).step)
 
-data_root = '/content/drive/MyDrive/ST/'
+data_root = './data/train'
 input_A = torch.ones(1, 3, 256, 256, dtype=torch.float).to(device)
 input_B = torch.ones(1, 3, 256, 256, dtype=torch.float).to(device)
 
@@ -49,7 +54,7 @@ label_fake = torch.zeros([1], requires_grad=False, dtype=torch.float).to(device)
 fake_A_buffer = ReplayBuffer()
 fake_B_buffer = ReplayBuffer()
 
-log_path = '/content/logs/'
+log_path = './log/'
 writer = tensorboardX.SummaryWriter(log_path)
 
 transforms_ = [
@@ -168,7 +173,7 @@ for epoch in range(epoch, n_epochs):
   lr_scheduler_DA.step()
   lr_scheduler_DB.step()
 
-  torch.save(net_GAtoB.state_dict(), '/content/models/net_GAtoB.pth')
-  torch.save(net_GBtoA.state_dict(), '/content/models/net_GBtoA.pth')
-  torch.save(net_DA.state_dict(), '/content/models/net_DA.pth')
-  torch.save(net_DB.state_dict(), '/content/models/net_DB.pth')
+  torch.save(net_GAtoB.state_dict(), './models/net_GAtoB.pth')
+  torch.save(net_GBtoA.state_dict(), './models/net_GBtoA.pth')
+  torch.save(net_DA.state_dict(), './models/net_DA.pth')
+  torch.save(net_DB.state_dict(), './models/net_DB.pth')
